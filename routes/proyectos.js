@@ -5,15 +5,43 @@ const { connection } = require("../config/config.db");
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
-// Servicio para obtener todos los proyectos
+// Servicio para obtener todos los proyectos con el nombre del autor
 const getProyectos = (req, res) => {
-    connection.query("SELECT * FROM tbl_proyectos", (error, results) => {
+    const query = `
+        SELECT p.*, u.usuario_nombre AS autor_nombre
+        FROM tbl_proyectos p
+        LEFT JOIN tbl_usuarios u ON p.usuario_id = u.usuario_id
+    `;
+    connection.query(query, (error, results) => {
         if (error) {
             console.error("Error al obtener proyectos:", error);
             res.status(500).json({ error: "Error interno del servidor" });
             return;
         }
         res.status(200).json(results);
+    });
+};
+
+// Servicio para obtener un proyecto por su ID
+const getProyectoById = (req, res) => {
+    const proyecto_id = req.params.proyecto_id;
+    const query = `
+        SELECT p.*, u.usuario_nombre AS autor_nombre
+        FROM tbl_proyectos p
+        LEFT JOIN tbl_usuarios u ON p.usuario_id = u.usuario_id
+        WHERE p.proyecto_id = ?
+    `;
+    connection.query(query, [proyecto_id], (error, results) => {
+        if (error) {
+            console.error("Error al obtener el proyecto:", error);
+            res.status(500).json({ error: "Error interno del servidor" });
+            return;
+        }
+        if (results.length === 0) {
+            res.status(404).json({ error: "Proyecto no encontrado" });
+            return;
+        }
+        res.status(200).json(results[0]);
     });
 };
 
@@ -89,7 +117,8 @@ const deleteProyecto = (req, res) => {
 
 // Rutas
 router.get("/home", getProyectos);
+router.get("/proyecto/:proyecto_id", getProyectoById); // Ruta para obtener un proyecto por ID
 router.post("/", upload.single('archivo_pdf'), postProyecto);
 router.delete("/:proyecto_id", deleteProyecto);
 
-module.exports = router; 
+module.exports = router;
