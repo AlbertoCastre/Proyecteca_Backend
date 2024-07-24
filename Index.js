@@ -20,7 +20,7 @@ app.use(require('./routes/estados'));
 app.use(require('./routes/proyectos'));
 app.use(require('./routes/roles'));
 app.use(require('./routes/usuarios'));
-
+app.use(require('./routes/categorias'));
 app.use(require('./routes/test'));
 
 const PORT = process.env.PORT;

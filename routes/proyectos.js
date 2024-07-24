@@ -1,9 +1,20 @@
-const express = require("express");
-const multer = require("multer");
-const { connection } = require("../config/config.db");
+const express = require('express');
+const multer = require('multer');
+const { connection } = require('../config/config.db');
+const dotenv = require('dotenv');
+
+dotenv.config(); // Configuración de variables de entorno
 
 const router = express.Router();
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = multer({
+    storage: multer.memoryStorage(),
+    fileFilter: (req, file, cb) => {
+        if (file.fieldname !== 'proyecto_archivo_pdf') {
+            return cb(new Error('Campo de archivo incorrecto'), false);
+        }
+        cb(null, true); 
+    }
+});
 
 // Servicio para obtener todos los proyectos con el nombre del autor
 const getProyectos = (req, res) => {
@@ -47,15 +58,23 @@ const getProyectoById = (req, res) => {
 
 // Servicio para agregar o editar un proyecto
 const postProyecto = (req, res) => {
-    const { action, proyecto_id, proyecto_titulo, proyecto_descripcion, proyecto_fecha_subida, usuario_id, carrera_id, estado_id } = req.body;
-    const proyecto_archivo_pdf = req.file.buffer;
+    console.log("Datos recibidos en el backend:", req.body);
+    console.log("Archivo recibido:", req.file ? req.file.originalname : "Ninguno");
 
-    if (action === "insert") {
+    const { action, proyecto_titulo, proyecto_descripcion, proyecto_fecha_subida, usuario_id, carrera_id, estado_id, categoria_id } = req.body;
+
+    const proyecto_archivo_pdf = req.file ? req.file.buffer : null;
+
+    if (!proyecto_titulo || !proyecto_descripcion || !proyecto_fecha_subida || !usuario_id || !carrera_id || !estado_id || !proyecto_archivo_pdf) {
+        return res.status(400).json({ error: "Todos los campos son obligatorios" });
+    }
+
+    if (action === 'insert') {
         const query = `
             INSERT INTO tbl_proyectos (
                 proyecto_titulo, proyecto_descripcion, proyecto_fecha_subida,
-                proyecto_archivo_pdf, usuario_id, carrera_id, estado_id
-            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                proyecto_archivo_pdf, usuario_id, carrera_id, estado_id, categoria_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `;
         connection.query(query, [
             proyecto_titulo, 
@@ -64,20 +83,21 @@ const postProyecto = (req, res) => {
             proyecto_archivo_pdf, 
             usuario_id, 
             carrera_id, 
-            estado_id
+            estado_id,
+            categoria_id
         ], (error, results) => {
             if (error) {
                 console.error("Error al agregar proyecto:", error);
-                res.status(500).json({ error: "Error interno del servidor" });
+                res.status(500).json({ error: "Error interno del servidor", details: error });
                 return;
             }
             res.status(201).json({ message: "Proyecto añadido correctamente", affectedRows: results.affectedRows });
         });
-    } else if (action === "update") {
+    } else if (action === 'update') {
         const query = `
             UPDATE tbl_proyectos SET
                 proyecto_titulo=?, proyecto_descripcion=?, proyecto_fecha_subida=?,
-                proyecto_archivo_pdf=?, usuario_id=?, carrera_id=?, estado_id=?
+                proyecto_archivo_pdf=?, usuario_id=?, carrera_id=?, estado_id=?, categoria_id=?
             WHERE proyecto_id=?
         `;
         connection.query(query, [
@@ -87,19 +107,20 @@ const postProyecto = (req, res) => {
             proyecto_archivo_pdf, 
             usuario_id, 
             carrera_id, 
-            estado_id, 
+            estado_id,
+            categoria_id,
             proyecto_id
         ], (error, results) => {
             if (error) {
                 console.error("Error al actualizar proyecto:", error);
-                res.status(500).json({ error: "Error interno del servidor" });
+                res.status(500).json({ error: "Error interno del servidor", details: error });
                 return;
             }
             res.status(200).json({ message: "Proyecto editado correctamente", affectedRows: results.affectedRows });
         });
     } else {
         res.status(400).json({ error: "Acción no válida" });
-    }
+    }    
 };
 
 // Servicio para eliminar un proyecto por su ID
@@ -117,8 +138,8 @@ const deleteProyecto = (req, res) => {
 
 // Rutas
 router.get("/home", getProyectos);
-router.get("/proyecto/:proyecto_id", getProyectoById); // Ruta para obtener un proyecto por ID
-router.post("/", upload.single('archivo_pdf'), postProyecto);
+router.get("/proyecto/:proyecto_id", getProyectoById);
+router.post("/sube", upload.single('proyecto_archivo_pdf'), postProyecto);
 router.delete("/:proyecto_id", deleteProyecto);
 
 module.exports = router;
