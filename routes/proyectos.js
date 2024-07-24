@@ -12,7 +12,7 @@ const upload = multer({
         if (file.fieldname !== 'proyecto_archivo_pdf') {
             return cb(new Error('Campo de archivo incorrecto'), false);
         }
-        cb(null, true); 
+        cb(null, true);
     }
 });
 
@@ -77,12 +77,12 @@ const postProyecto = (req, res) => {
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `;
         connection.query(query, [
-            proyecto_titulo, 
-            proyecto_descripcion, 
-            proyecto_fecha_subida, 
-            proyecto_archivo_pdf, 
-            usuario_id, 
-            carrera_id, 
+            proyecto_titulo,
+            proyecto_descripcion,
+            proyecto_fecha_subida,
+            proyecto_archivo_pdf,
+            usuario_id,
+            carrera_id,
             estado_id,
             categoria_id
         ], (error, results) => {
@@ -101,15 +101,15 @@ const postProyecto = (req, res) => {
             WHERE proyecto_id=?
         `;
         connection.query(query, [
-            proyecto_titulo, 
-            proyecto_descripcion, 
-            proyecto_fecha_subida, 
-            proyecto_archivo_pdf, 
-            usuario_id, 
-            carrera_id, 
+            proyecto_titulo,
+            proyecto_descripcion,
+            proyecto_fecha_subida,
+            proyecto_archivo_pdf,
+            usuario_id,
+            carrera_id,
             estado_id,
             categoria_id,
-            proyecto_id
+            req.body.proyecto_id
         ], (error, results) => {
             if (error) {
                 console.error("Error al actualizar proyecto:", error);
@@ -120,7 +120,7 @@ const postProyecto = (req, res) => {
         });
     } else {
         res.status(400).json({ error: "Acción no válida" });
-    }    
+    }
 };
 
 // Servicio para eliminar un proyecto por su ID
@@ -136,9 +136,33 @@ const deleteProyecto = (req, res) => {
     });
 };
 
+// Servicio para obtener el archivo PDF del proyecto
+const getPdfByProyectoId = (req, res) => {
+    const proyecto_id = req.params.proyecto_id;
+    const query = 'SELECT proyecto_archivo_pdf FROM tbl_proyectos WHERE proyecto_id = ?';
+
+    connection.query(query, [proyecto_id], (error, results) => {
+        if (error) {
+            console.error("Error al obtener el archivo PDF:", error);
+            return res.status(500).json({ error: "Error interno del servidor" });
+        }
+
+        if (results.length === 0 || !results[0].proyecto_archivo_pdf) {
+            return res.status(404).json({ error: "Archivo PDF no encontrado" });
+        }
+
+        const pdfBuffer = results[0].proyecto_archivo_pdf;
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `inline; filename=proyecto_${proyecto_id}.pdf`);
+        res.send(pdfBuffer);
+    });
+};
+
 // Rutas
 router.get("/home", getProyectos);
 router.get("/proyecto/:proyecto_id", getProyectoById);
+router.get("/proyecto/:proyecto_id/pdf", getPdfByProyectoId); // Nueva ruta para obtener el PDF
 router.post("/sube", upload.single('proyecto_archivo_pdf'), postProyecto);
 router.delete("/:proyecto_id", deleteProyecto);
 
