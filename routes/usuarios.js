@@ -178,10 +178,36 @@ const postGoogleLogin = async (request, response) => {
     }
 };
 
+// Nuevo servicio para obtener el usuario_id usando el googleId
+const getUsuarioIdPorGoogleId = (request, response) => {
+  const { googleId } = request.query;
+  connection.query(
+      "SELECT usuario_id FROM tbl_usuarios WHERE usuario_google_id = ?",
+      [googleId],
+      (error, results) => {
+          if (error) {
+              console.error("Error al obtener usuario_id:", error);
+              response.status(500).json({ error: "Error interno del servidor" });
+              return;
+          }
+          if (results.length > 0) {
+              response.status(200).json({ usuario_id: results[0].usuario_id });
+          } else {
+              response.status(404).json({ error: "Usuario no encontrado" });
+          }
+      }
+  );
+};
+
+
+
 // Rutas
 app.get("/usuarios", getUsuarios);
 app.post("/usuarios", postUsuario);
 app.delete("/usuarios/:usuario_id", deleteUsuario);
 app.post("/auth/google", postGoogleLogin); // Nueva ruta para el login con Google
+
+// Agregar ruta para obtener usuario_id por googleId
+app.get("/usuarios/por-google-id", getUsuarioIdPorGoogleId);
 
 module.exports = app;
