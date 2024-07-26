@@ -16,14 +16,15 @@ const upload = multer({
     }
 });
 
-// Servicio para obtener todos los proyectos con el nombre del autor
+// Servicio para obtener todos los proyectos aprobados con el nombre del autor
 const getProyectos = (req, res) => {
     const query = `
         SELECT p.*, u.usuario_nombre AS autor_nombre
         FROM tbl_proyectos p
         LEFT JOIN tbl_usuarios u ON p.usuario_id = u.usuario_id
+        WHERE p.estado_id = 2
     `;
-    connection.query(query, (error, results) => {
+        connection.query(query, (error, results) => {
         if (error) {
             console.error("Error al obtener proyectos:", error);
             res.status(500).json({ error: "Error interno del servidor" });
@@ -61,8 +62,7 @@ const postProyecto = (req, res) => {
     console.log("Datos recibidos en el backend:", req.body);
     console.log("Archivo recibido:", req.file ? req.file.originalname : "Ninguno");
 
-    const { action, proyecto_titulo, proyecto_descripcion, proyecto_fecha_subida, usuario_id, carrera_id, estado_id, categoria_id } = req.body;
-
+    const { action, proyecto_titulo, proyecto_descripcion, proyecto_fecha_subida, usuario_id, carrera_id, estado_id, categoria_id, proyecto_id } = req.body;
     const proyecto_archivo_pdf = req.file ? req.file.buffer : null;
 
     if (!proyecto_titulo || !proyecto_descripcion || !proyecto_fecha_subida || !usuario_id || !carrera_id || !estado_id || !proyecto_archivo_pdf) {
@@ -94,29 +94,48 @@ const postProyecto = (req, res) => {
             res.status(201).json({ message: "Proyecto añadido correctamente", affectedRows: results.affectedRows });
         });
     } else if (action === 'update') {
-        const query = `
-            UPDATE tbl_proyectos SET
-                proyecto_titulo=?, proyecto_descripcion=?, proyecto_fecha_subida=?,
-                proyecto_archivo_pdf=?, usuario_id=?, carrera_id=?, estado_id=?, categoria_id=?
-            WHERE proyecto_id=?
+        // Verificar si el usuario tiene permiso para actualizar
+        const queryUsuario = `
+            SELECT rol_id FROM tbl_usuarios WHERE usuario_id = ?
         `;
-        connection.query(query, [
-            proyecto_titulo,
-            proyecto_descripcion,
-            proyecto_fecha_subida,
-            proyecto_archivo_pdf,
-            usuario_id,
-            carrera_id,
-            estado_id,
-            categoria_id,
-            req.body.proyecto_id
-        ], (error, results) => {
+        connection.query(queryUsuario, [usuario_id], (error, userResults) => {
             if (error) {
-                console.error("Error al actualizar proyecto:", error);
-                res.status(500).json({ error: "Error interno del servidor", details: error });
-                return;
+                console.error("Error al obtener el rol del usuario:", error);
+                return res.status(500).json({ error: "Error interno del servidor" });
             }
-            res.status(200).json({ message: "Proyecto editado correctamente", affectedRows: results.affectedRows });
+            if (userResults.length === 0) {
+                return res.status(404).json({ error: "Usuario no encontrado" });
+            }
+
+            const userRole = userResults[0].rol_id;
+            if (userRole !== 1 && userRole !== 2) { // Verifica los roles permitidos
+                return res.status(403).json({ error: "No tienes permiso para actualizar este proyecto" });
+            }
+
+            const queryUpdate = `
+                UPDATE tbl_proyectos SET
+                    proyecto_titulo=?, proyecto_descripcion=?, proyecto_fecha_subida=?,
+                    proyecto_archivo_pdf=?, usuario_id=?, carrera_id=?, estado_id=?, categoria_id=?
+                WHERE proyecto_id=?
+            `;
+            connection.query(queryUpdate, [
+                proyecto_titulo,
+                proyecto_descripcion,
+                proyecto_fecha_subida,
+                proyecto_archivo_pdf,
+                usuario_id,
+                carrera_id,
+                estado_id,
+                categoria_id,
+                proyecto_id
+            ], (error, results) => {
+                if (error) {
+                    console.error("Error al actualizar proyecto:", error);
+                    res.status(500).json({ error: "Error interno del servidor", details: error });
+                    return;
+                }
+                res.status(200).json({ message: "Proyecto editado correctamente", affectedRows: results.affectedRows });
+            });
         });
     } else {
         res.status(400).json({ error: "Acción no válida" });
@@ -159,11 +178,38 @@ const getPdfByProyectoId = (req, res) => {
     });
 };
 
+// Servicio para obtener proyectos por usuario_id
+const getProyectosPorUsuarioId = (req, res) => {
+    const { usuarioId } = req.query;
+
+    if (!usuarioId) {
+        return res.status(400).json({ error: 'Se requiere el usuario_id' });
+    }
+
+    const query = `
+        SELECT p.*, u.usuario_nombre AS autor_nombre
+        FROM tbl_proyectos p
+        LEFT JOIN tbl_usuarios u ON p.usuario_id = u.usuario_id
+        WHERE p.usuario_id = ?
+    `;
+
+    connection.query(query, [usuarioId], (error, results) => {
+        if (error) {
+            console.error('Error al obtener proyectos por usuario_id:', error);
+            return res.status(500).json({ error: 'Error interno del servidor' });
+        }
+        res.status(200).json(results);
+    });
+};
+
 // Rutas
+
+router.get('/proyectos/por-usuario', getProyectosPorUsuarioId);
 router.get("/home", getProyectos);
 router.get("/proyecto/:proyecto_id", getProyectoById);
 router.get("/proyecto/:proyecto_id/pdf", getPdfByProyectoId); // Nueva ruta para obtener el PDF
 router.post("/sube", upload.single('proyecto_archivo_pdf'), postProyecto);
+router.post("/sube/:proyecto_id", upload.single('proyecto_archivo_pdf'), postProyecto);
 router.delete("/:proyecto_id", deleteProyecto);
 
 module.exports = router;
