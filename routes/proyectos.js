@@ -24,7 +24,7 @@ const getProyectos = (req, res) => {
         LEFT JOIN tbl_usuarios u ON p.usuario_id = u.usuario_id
         WHERE p.estado_id = 2
     `;
-        connection.query(query, (error, results) => {
+    connection.query(query, (error, results) => {
         if (error) {
             console.error("Error al obtener proyectos:", error);
             res.status(500).json({ error: "Error interno del servidor" });
@@ -101,8 +101,6 @@ const postProyecto = (req, res) => {
             WHERE proyecto_id=?
         `;
         const proyecto_fecha_subida = new Date(); // Puedes ajustar la lógica de la fecha si es necesario
-        
-        // Guarda el nombre del archivo si fue subido
 
         connection.query(queryUpdate, [
             proyecto_titulo,
@@ -115,7 +113,7 @@ const postProyecto = (req, res) => {
             categoria_id,
             proyecto_id
         ], (error, results) => {
-            if (error) {
+            if (error) {    
                 console.error('Error al actualizar proyecto:', error);
                 return res.status(500).json({ error: 'Error interno del servidor', details: error });
             }
@@ -186,14 +184,37 @@ const getProyectosPorUsuarioId = (req, res) => {
     });
 };
 
+// Servicio para obtener proyectos por carrera
+const getProyectosPorCarrera = (req, res) => {
+    const { carrera_id } = req.params;
+
+    if (!carrera_id) {
+        return res.status(400).json({ error: "Falta el parámetro carrera_id" });
+    }
+
+    const query = `
+        SELECT p.*, u.usuario_nombre AS autor_nombre
+        FROM tbl_proyectos p
+        LEFT JOIN tbl_usuarios u ON p.usuario_id = u.usuario_id
+        WHERE p.estado_id = 2 AND p.carrera_id = ?
+    `;
+
+    connection.query(query, [carrera_id], (error, results) => {
+        if (error) {
+            console.error("Error al obtener proyectos:", error);
+            res.status(500).json({ error: "Error interno del servidor" });
+            return;
+        }
+        res.status(200).json(results);
+    });
+};
+
 // Rutas
-
+router.get("/proyectos/carrera/:carrera_id", getProyectosPorCarrera);
 router.get('/proyectos/por-usuario', getProyectosPorUsuarioId);
-
 router.get("/home", getProyectos);
-
 router.get("/proyecto/:proyecto_id", getProyectoById);
-router.get("/proyecto/:proyecto_id/pdf", getPdfByProyectoId); // Nueva ruta para obtener el PDF
+router.get("/proyecto/:proyecto_id/pdf", getPdfByProyectoId);
 router.post("/sube", upload.single('proyecto_archivo_pdf'), postProyecto);
 router.post("/sube/:proyecto_id", upload.single('proyecto_archivo_pdf'), postProyecto);
 router.delete("/:proyecto_id", deleteProyecto);
