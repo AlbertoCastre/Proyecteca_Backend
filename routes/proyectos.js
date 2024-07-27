@@ -94,51 +94,35 @@ const postProyecto = (req, res) => {
             res.status(201).json({ message: "Proyecto añadido correctamente", affectedRows: results.affectedRows });
         });
     } else if (action === 'update') {
-        // Verificar si el usuario tiene permiso para actualizar
-        const queryUsuario = `
-            SELECT rol_id FROM tbl_usuarios WHERE usuario_id = ?
+        const queryUpdate = `
+            UPDATE tbl_proyectos SET
+                proyecto_titulo=?, proyecto_descripcion=?, proyecto_fecha_subida=?,
+                proyecto_archivo_pdf=?, usuario_id=?, carrera_id=?, estado_id=?, categoria_id=?
+            WHERE proyecto_id=?
         `;
-        connection.query(queryUsuario, [usuario_id], (error, userResults) => {
+        const proyecto_fecha_subida = new Date(); // Puedes ajustar la lógica de la fecha si es necesario
+        
+        // Guarda el nombre del archivo si fue subido
+
+        connection.query(queryUpdate, [
+            proyecto_titulo,
+            proyecto_descripcion,
+            proyecto_fecha_subida,
+            proyecto_archivo_pdf,
+            usuario_id,
+            carrera_id,
+            estado_id,
+            categoria_id,
+            proyecto_id
+        ], (error, results) => {
             if (error) {
-                console.error("Error al obtener el rol del usuario:", error);
-                return res.status(500).json({ error: "Error interno del servidor" });
+                console.error('Error al actualizar proyecto:', error);
+                return res.status(500).json({ error: 'Error interno del servidor', details: error });
             }
-            if (userResults.length === 0) {
-                return res.status(404).json({ error: "Usuario no encontrado" });
-            }
-
-            const userRole = userResults[0].rol_id;
-            if (userRole !== 1 && userRole !== 2) { // Verifica los roles permitidos
-                return res.status(403).json({ error: "No tienes permiso para actualizar este proyecto" });
-            }
-
-            const queryUpdate = `
-                UPDATE tbl_proyectos SET
-                    proyecto_titulo=?, proyecto_descripcion=?, proyecto_fecha_subida=?,
-                    proyecto_archivo_pdf=?, usuario_id=?, carrera_id=?, estado_id=?, categoria_id=?
-                WHERE proyecto_id=?
-            `;
-            connection.query(queryUpdate, [
-                proyecto_titulo,
-                proyecto_descripcion,
-                proyecto_fecha_subida,
-                proyecto_archivo_pdf,
-                usuario_id,
-                carrera_id,
-                estado_id,
-                categoria_id,
-                proyecto_id
-            ], (error, results) => {
-                if (error) {
-                    console.error("Error al actualizar proyecto:", error);
-                    res.status(500).json({ error: "Error interno del servidor", details: error });
-                    return;
-                }
-                res.status(200).json({ message: "Proyecto editado correctamente", affectedRows: results.affectedRows });
-            });
+            res.status(200).json({ message: 'Proyecto editado correctamente', affectedRows: results.affectedRows });
         });
     } else {
-        res.status(400).json({ error: "Acción no válida" });
+        res.status(400).json({ error: 'Acción no válida' });
     }
 };
 
@@ -205,7 +189,9 @@ const getProyectosPorUsuarioId = (req, res) => {
 // Rutas
 
 router.get('/proyectos/por-usuario', getProyectosPorUsuarioId);
+
 router.get("/home", getProyectos);
+
 router.get("/proyecto/:proyecto_id", getProyectoById);
 router.get("/proyecto/:proyecto_id/pdf", getPdfByProyectoId); // Nueva ruta para obtener el PDF
 router.post("/sube", upload.single('proyecto_archivo_pdf'), postProyecto);

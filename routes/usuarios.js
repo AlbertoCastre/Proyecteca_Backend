@@ -199,6 +199,20 @@ const getUsuarioIdPorGoogleId = (request, response) => {
   );
 };
 
+// Ejemplo usando Express.js
+app.get('/api/usuarios/verificar-datos', async (req, res) => {
+  const { googleId } = req.query;
+  try {
+    const user = await getUserByGoogleId(googleId); // Función que obtiene el usuario por su Google ID
+    const datosCompletos = user.usuario_nombre && user.usuario_email && user.usuario_matricula;
+    res.json({ datosCompletos });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error al verificar datos del usuario' });
+  }
+});
+
+
 
 
 // Rutas

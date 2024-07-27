@@ -8,14 +8,15 @@ const { connection } = require("../config/config.db");
 
 app.use(express.json());
 
-// Servicio para obtener el rol de un usuario por su usuario_id
+
+// Servicio para obtener el rol de un usuario por su googleId
 const getUserRole = (request, response) => {
-    const usuario_id = request.params.usuario_id;
+    const googleId = request.params.googleId; // Cambiado a googleId
     connection.query(`
-        SELECT r.rol_nombre
+        SELECT r.rol_id, r.rol_nombre
         FROM tbl_usuarios u
         JOIN tbl_roles r ON u.rol_id = r.rol_id
-        WHERE u.usuario_id = ?`, [usuario_id], (error, results) => {
+        WHERE u.usuario_google_id = ?`, [googleId], (error, results) => { // Actualizado para usar usuario_google_id
         if (error) {
             console.error("Error al obtener el rol del usuario:", error);
             response.status(500).json({ error: "Error interno del servidor" });
@@ -25,9 +26,10 @@ const getUserRole = (request, response) => {
             response.status(404).json({ error: "Usuario no encontrado" });
             return;
         }
-        response.status(200).json(results[0]);
+        response.status(200).json(results[0]); // Devolver el rol_id y rol_nombre
     });
 };
+
 
 // Servicio para obtener todos los roles
 const getRoles = (request, response) => {
@@ -87,7 +89,7 @@ const deleteRol = (request, response) => {
 
 // Rutas
 app.get("/roles", getRoles);
-app.get("/user-role/:usuario_id", getUserRole); // Nueva ruta para obtener el rol del usuario
+app.get("/user-role/:googleId", getUserRole); // Cambiado a googleId
 app.post("/roles", postRol);
 app.delete("/roles/:rol_id", deleteRol);
 
