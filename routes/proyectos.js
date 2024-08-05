@@ -217,6 +217,6 @@ router.get("/proyecto/:proyecto_id", getProyectoById);
 router.get("/proyecto/:proyecto_id/pdf", getPdfByProyectoId);
 router.post("/sube", upload.single('proyecto_archivo_pdf'), postProyecto);
 router.post("/sube/:proyecto_id", upload.single('proyecto_archivo_pdf'), postProyecto);
-router.delete("/:proyecto_id", deleteProyecto);
+router.delete("/proyecto/:proyecto_id", deleteProyecto);
 
 module.exports = router;
