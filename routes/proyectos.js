@@ -172,7 +172,7 @@ const getProyectosPorUsuarioId = (req, res) => {
         SELECT p.*, u.usuario_nombre AS autor_nombre
         FROM tbl_proyectos p
         LEFT JOIN tbl_usuarios u ON p.usuario_id = u.usuario_id
-        WHERE p.usuario_id = ?
+        WHERE p.usuario_id = ? AND p.estado_id = 2
     `;
 
     connection.query(query, [usuarioId], (error, results) => {
@@ -209,6 +209,69 @@ const getProyectosPorCarrera = (req, res) => {
     });
 };
 
+const getProyectosPendientesPorUsuarioId = (req, res) => {
+    const { usuarioId } = req.query;
+
+    if (!usuarioId) {
+        return res.status(400).json({ error: 'Se requiere el usuario_id' });
+    }
+
+    const query = `
+        SELECT p.*, u.usuario_nombre AS autor_nombre
+        FROM tbl_proyectos p
+        LEFT JOIN tbl_usuarios u ON p.usuario_id = u.usuario_id
+        WHERE p.usuario_id = ? AND p.estado_id = 1
+    `;
+
+    connection.query(query, [usuarioId], (error, results) => {
+        if (error) {
+            console.error('Error al obtener proyectos por usuario_id:', error);
+            return res.status(500).json({ error: 'Error interno del servidor' });
+        }
+        res.status(200).json(results);
+    });
+};
+
+const getProyectosPendientes = (req, res) => {
+    const query = `
+        SELECT p.*, u.usuario_nombre AS autor_nombre
+        FROM tbl_proyectos p
+        LEFT JOIN tbl_usuarios u ON p.usuario_id = u.usuario_id
+        WHERE p.estado_id = 1
+    `;
+
+    connection.query(query, (error, results) => {
+        if (error) {
+            console.error('Error al obtener proyectos pendientes:', error);
+            return res.status(500).json({ error: 'Error interno del servidor' });
+        }
+        res.status(200).json(results);
+    });
+};
+
+const updateProyectoEstado = (req, res) => {
+    const { proyecto_id, estado_id } = req.body;
+  
+    if (!proyecto_id || !estado_id) {
+      return res.status(400).json({ error: 'Se requieren proyecto_id y estado_id' });
+    }
+  
+    const query = `
+      UPDATE tbl_proyectos
+      SET estado_id = ?
+      WHERE proyecto_id = ?
+    `;
+  
+    connection.query(query, [estado_id, proyecto_id], (error, results) => {
+      if (error) {
+        console.error('Error al actualizar estado del proyecto:', error);
+        return res.status(500).json({ error: 'Error interno del servidor' });
+      }
+      res.status(200).json({ message: 'Estado del proyecto actualizado correctamente' });
+    });
+  };
+
+
 // Rutas
 router.get("/proyectos/carrera/:carrera_id", getProyectosPorCarrera);
 router.get('/proyectos/por-usuario', getProyectosPorUsuarioId);
@@ -218,5 +281,12 @@ router.get("/proyecto/:proyecto_id/pdf", getPdfByProyectoId);
 router.post("/sube", upload.single('proyecto_archivo_pdf'), postProyecto);
 router.post("/sube/:proyecto_id", upload.single('proyecto_archivo_pdf'), postProyecto);
 router.delete("/proyecto/:proyecto_id", deleteProyecto);
+
+// Ruta para obtener proyectos por usuario con estado_id = 1
+router.get('/proyectos/pendientes-por-usuario', getProyectosPendientesPorUsuarioId);
+
+router.get('/proyectos/pendientes', getProyectosPendientes);
+
+router.post('/proyectos/update', updateProyectoEstado);
 
 module.exports = router;
