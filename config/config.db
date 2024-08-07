@@ -16,4 +16,3 @@ try {
 console.log("Error al conectar con la base de datos");
 }
 module.exports = {connection};
-
