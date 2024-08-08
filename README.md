@@ -38,7 +38,7 @@ En el directorio del proyecto, puedes ejecutar los siguientes comandos:
 
 1. Clona este repositorio:
     ```bash
-    git clone https://github.com/tu-usuario/nombre-del-repositorio.git
+    git clone https://github.com/AlbertoCastre/Proyecteca_Backend.git
     ```
 
 2. Navega al directorio del proyecto:
